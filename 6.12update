@@ -1,0 +1,39 @@
+// enemy.cpp +
+float Enemy::GetCollisionRadius() const {
+    return CollisionRadius;
+}
+Enemy::Enemy(std::string img, float x, float y, float radius, float speed, float hp, int money) : Engine::Sprite(img, x, y), speed(speed), hp(hp), money(money) {
+    CollisionRadius = radius; // 加這
+    reachEndTime = 0;
+    hpMax=hp; // 這血條用的
+}
+
+// enemy.hpp + public +
+float GetCollisionRadius() const;
+
+// Engine  Sprite.cpp  draw 改成
+void Sprite::Draw() const {
+        float scaleX = Size.x / GetBitmapWidth();
+        if (flipX) scaleX = -scaleX;
+
+        float drawPosX = Position.x;
+        float anchorOffset = (2 * Anchor.x - 1) * Size.x;
+        if (flipX) {
+            drawPosX += anchorOffset;
+        }
+
+        al_draw_tinted_scaled_rotated_bitmap(
+            bmp.get(), Tint,
+            Anchor.x * GetBitmapWidth(), Anchor.y * GetBitmapHeight(),
+            drawPosX, Position.y,
+            scaleX, Size.y / GetBitmapHeight(),
+            Rotation,
+            0
+        );
+    }
+
+// Sprite.hpp +
+bool flipX = false;  
+
+// player.cpp hpp wizard.cpp hpp 直接換全部
+// playscene initialize記得換成wizard_1.png圖片
