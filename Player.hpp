@@ -25,6 +25,8 @@ public:
     bool facingLeft = false;
     void HitByEnemy(float fromX, float fromY); //受傷
     float GetCollisionRadius() const;
+    float damageCooldown = 0.0f;  
+
 };
 
 #endif // PLAYER_HPP
