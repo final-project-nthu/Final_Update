@@ -15,9 +15,13 @@ PlayScene* Player::getPlayScene() {
 Player::Player(std::string img, float x, float y, float speed)
     : Engine::Sprite(img, x, y), speed(speed), baseY(y), CollisionRadius(16.0f) {}
 
+
+
 void Player::Update(float deltaTime) {
     Sprite::Update(deltaTime);
     timeSinceStart += deltaTime;
+
+    if (damageCooldown > 0) damageCooldown -= deltaTime;
 
     PlayScene* scene = getPlayScene();
     const float mapWidth = PlayScene::MapWidth * PlayScene::BlockSize;
@@ -35,18 +39,41 @@ void Player::Update(float deltaTime) {
     if (velocity.Magnitude() > 0)
         velocity = velocity.Normalize() * speed * deltaTime;
 
+    // 角色翻轉判斷
     if (velocity.x < 0) flipX = true;
     else if (velocity.x > 0) flipX = false;
 
-    Position.x += velocity.x + knockbackX;
-    baseY += velocity.y + knockbackY;
+    // 計算嘗試移動的新位置（含擊退）
+    float tryX = Position.x + velocity.x + knockbackX;
+    float tryY = baseY + velocity.y + knockbackY;
 
+    // 先處理 X 軸移動與碰撞
+    int gridX = static_cast<int>(tryX / PlayScene::BlockSize);
+    int gridY_curr = static_cast<int>(baseY / PlayScene::BlockSize);
+    if (gridX >= 0 && gridX < PlayScene::MapWidth &&
+        gridY_curr >= 0 && gridY_curr < PlayScene::MapHeight &&
+        scene->mapState[gridY_curr][gridX] == PlayScene::TILE_DIRT) {
+        Position.x = tryX;
+    }
+
+    // 再處理 Y 軸移動與碰撞
+    int gridY = static_cast<int>(tryY / PlayScene::BlockSize);
+    int gridX_curr = static_cast<int>(Position.x / PlayScene::BlockSize);
+    if (gridY >= 0 && gridY < PlayScene::MapHeight &&
+        gridX_curr >= 0 && gridX_curr < PlayScene::MapWidth &&
+        scene->mapState[gridY][gridX_curr] == PlayScene::TILE_DIRT) {
+        baseY = tryY;
+    }
+
+    // 擊退阻力衰減
     knockbackX *= 0.85f;
     knockbackY *= 0.85f;
 
+    // 限制不出地圖邊界
     Position.x = std::clamp(Position.x, 0.0f, mapWidth);
     baseY = std::clamp(baseY, 0.0f, mapHeight);
 
+    // 角色垂直抖動效果
     float vibrationAmplitude = 3.5f;
     float vibrationFrequency = 0.6f;
     Position.y = baseY + vibrationAmplitude * sinf(timeSinceStart * 2 * 3.14159f * vibrationFrequency);
@@ -65,9 +92,9 @@ void Player::Update(float deltaTime) {
     }
     prevLeftButtonDown = currLeftButtonDown;
 
-    // 判斷碰撞敵人
+    // 碰撞敵人判斷
     for (auto& obj : scene->EnemyGroup->GetObjects()) {
-        Enemy* enemy = dynamic_cast<Enemy*>(obj);  // 確保轉型成功
+        Enemy* enemy = dynamic_cast<Enemy*>(obj);
         if (!enemy) continue;
 
         float dx = Position.x - enemy->Position.x;
@@ -80,24 +107,32 @@ void Player::Update(float deltaTime) {
         }
     }
 
+    // 受傷時顯示紅色
     if (hitTimer > 0) {
         hitTimer -= deltaTime;
         Tint = al_map_rgba(255, 128, 128, 255);
-    } else {
+    }
+    else {
         Tint = al_map_rgba(255, 255, 255, 255);
     }
 }
 
-void Player::HitByEnemy(float fromX, float fromY) {
 
+void Player::HitByEnemy(float fromX, float fromY) {
+    if (damageCooldown > 0) return; 
+
+    damageCooldown = 1.0f; 
     hitTimer = 0.2f;
+
     Engine::Point dir = Engine::Point(Position.x - fromX, baseY - fromY).Normalize();
     float knockbackStrength = 300;
     knockbackX = dir.x * knockbackStrength * 0.016f;
     knockbackY = dir.y * knockbackStrength * 0.016f;
+
     PlayScene* scene = getPlayScene();
     scene->Hit();
 }
+
 
 void Player::Draw() const {
     float shadowX = Position.x - 2;
@@ -108,7 +143,6 @@ void Player::Draw() const {
                            al_map_rgba(0, 0, 0, 100));
 
     Sprite::Draw();
-    
 }
 
 Engine::Point Player::GetPosition() const {
