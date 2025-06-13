@@ -1,0 +1,121 @@
+// Player.cpp , hpp 直接替換
+
+// PlayScene.hpp部分把
+enum TileType {
+        TILE_DIRT,
+        TILE_FLOOR,
+        TILE_OCCUPIED,
+    };
+移到public
+再加上 TileType GetTileType(int x, int y) const;
+
+// PlayScene.cpp 加上
+PlayScene::TileType PlayScene::GetTileType(int x, int y) const {
+    if (x < 0 || x >= MapWidth || y < 0 || y >= MapHeight)
+        return TILE_OCCUPIED; // 當成牆壁，防止越界
+
+    return mapState[y][x];
+}
+
+// PlayScene.cpp 
+Player draw改成
+void PlayScene::Draw() const {
+    IScene::Draw(); 
+
+    int mapLeft = 0;
+    int mapTop = 0;
+    int mapWidthPixels = MapWidth * BlockSize;
+    int mapHeightPixels = MapHeight * BlockSize;
+
+    if (player) {
+        static ALLEGRO_BITMAP* lightMask = nullptr;
+        static int lastMapWidth = 0;
+        static int lastMapHeight = 0;
+
+        if (!lightMask || mapWidthPixels != lastMapWidth || mapHeightPixels != lastMapHeight) {
+            if (lightMask) al_destroy_bitmap(lightMask);
+            lightMask = al_create_bitmap(mapWidthPixels, mapHeightPixels);
+            lastMapWidth = mapWidthPixels;
+            lastMapHeight = mapHeightPixels;
+        }
+
+        ALLEGRO_DISPLAY* display = al_get_current_display();
+        ALLEGRO_BITMAP* backbuffer = al_get_backbuffer(display);
+
+        al_set_target_bitmap(lightMask);
+        al_clear_to_color(al_map_rgba(0, 0, 0, 255)); // 完全黑
+
+        int px = static_cast<int>(player->Position.x - mapLeft);
+        int py = static_cast<int>(player->Position.y - mapTop);
+
+        int radiusInner = 150;  // 完全亮
+        int radiusOuter = 400;  // 完全黑的起點（從亮漸變）
+
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+
+        for (int r = radiusOuter; r >= radiusInner; r--) {
+            float t = (float)(r - radiusInner) / (radiusOuter - radiusInner);
+            int alpha = static_cast<int>(255 * t); // 越外圈越黑
+            al_draw_filled_circle(px, py, r, al_map_rgba(0, 0, 0, alpha));
+        }
+
+        al_draw_filled_circle(px, py, radiusInner, al_map_rgba(0, 0, 0, 0));
+
+        al_set_target_bitmap(backbuffer);
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+        al_draw_tinted_bitmap(lightMask, al_map_rgba(255, 255, 255, 255), mapLeft, mapTop, 0);
+    }
+
+    if (player)
+        player->Draw();
+
+    // UI 可以放這裡，例如右側金幣或波數資訊
+
+    if (DebugMode) {
+        for (int i = 0; i < MapHeight; i++) {
+            for (int j = 0; j < MapWidth; j++) {
+                if (mapDistance[i][j] != -1) {
+                    // Not elegant nor efficient, but it's quite enough for debugging.
+                    Engine::Label label(std::to_string(mapDistance[i][j]), "pirulen.ttf", 32, (j + 0.5) * BlockSize, (i + 0.5) * BlockSize);
+                    label.Anchor = Engine::Point(0.5, 0.5);
+                    label.Draw();
+                }
+            }
+        }
+    }
+}
+
+// PlayScene.cpp 要 #include <allegro5/allegro_primitives.h>
+
+// Bullet.cpp update改成
+void Bullet::Update(float deltaTime) {
+    Sprite::Update(deltaTime);
+    PlayScene *scene = getPlayScene();
+
+    // 子彈撞牆判斷
+    int tileX = static_cast<int>(Position.x / PlayScene::BlockSize);
+    int tileY = static_cast<int>(Position.y / PlayScene::BlockSize);
+    if (scene->GetTileType(tileX, tileY) == PlayScene::TILE_FLOOR) {
+        scene->BulletGroup->RemoveObject(objectIterator);
+        return;
+    }
+
+    // 碰撞敵人
+    for (auto &it : scene->EnemyGroup->GetObjects()) {
+        Enemy *enemy = dynamic_cast<Enemy *>(it);
+        if (!enemy->Visible)
+            continue;
+        if (Engine::Collider::IsCircleOverlap(Position, CollisionRadius, enemy->Position, enemy->CollisionRadius)) {
+            OnExplode(enemy);
+            enemy->Hit(damage);
+            scene->BulletGroup->RemoveObject(objectIterator);
+            return;
+        }
+    }
+
+    // 出界判斷
+    if (!Engine::Collider::IsRectOverlap(Position - Size / 2, Position + Size / 2, Engine::Point(0, 0), PlayScene::GetClientSize())) {
+        scene->BulletGroup->RemoveObject(objectIterator);
+        return;
+    }
+}
