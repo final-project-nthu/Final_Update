@@ -5,7 +5,7 @@
 #include "Engine/GameEngine.hpp"
 #include "Enemy.hpp"
 #include <cmath>
-SkeletonEnemy::SkeletonEnemy(int x, int y) : Enemy("play/skeleton.png", x, y, 10, 50, 5, 5){
+SkeletonEnemy::SkeletonEnemy(int x, int y) : Enemy("play/skeleton.png", x, y, 50, 50, 5, 5){
 }
 
 void SkeletonEnemy::Draw() const {

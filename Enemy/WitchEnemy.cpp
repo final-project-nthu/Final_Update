@@ -7,7 +7,7 @@
 #include <cmath>
 
 WitchEnemy::WitchEnemy(float x, float y)
-    : Enemy("play/witch.png", x, y, 1, 50, 100, 10), // radius, speed, HP, money
+    : Enemy("play/witch.png", x, y, 50, 50, 100, 10), // radius, speed, HP, money
       summonRange(300), summonCooldown(6.0f), summonTimer(0) {
     // 不做額外設定，沿用父類別 Enemy 的 pathfinding 行為
 }

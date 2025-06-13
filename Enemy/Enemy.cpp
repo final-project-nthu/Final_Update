@@ -16,6 +16,12 @@
 #include "Turret/Turret.hpp"
 #include "UI/Animation/DirtyEffect.hpp"
 #include "UI/Animation/ExplosionEffect.hpp"
+#include "Engine/Collider.hpp"
+#include "Engine/GameEngine.hpp"
+#include "Engine/IObject.hpp"
+#include "Engine/Point.hpp"
+#include "Engine/Sprite.hpp"
+#include "Player/Player.hpp"
 
 PlayScene *Enemy::getPlayScene() {
     return dynamic_cast<PlayScene *>(Engine::GameEngine::GetInstance().GetActiveScene());
@@ -92,6 +98,14 @@ void Enemy::UpdatePath(const std::vector<std::vector<int>> &mapDistance) {
 }
 
 void Enemy::Update(float deltaTime) {
+    Player* player = dynamic_cast<Player*>(getPlayScene()->Player);
+    if (player && Engine::Collider::IsCircleOverlap(Position, CollisionRadius, player->Position, player->CollisionRadius)) {
+        //player->Hit(10); // 或自定義傷害數值
+        OnExplode();     // 碰撞後爆炸消失
+        getPlayScene()->EnemyGroup->RemoveObject(objectIterator);
+        return;
+    }
+
     // Pre-calculate the velocity.
     float remainSpeed = speed * deltaTime;
     while (remainSpeed != 0) {
@@ -124,27 +138,6 @@ void Enemy::Update(float deltaTime) {
     Sprite::Update(deltaTime);
 }
 
-/*
-void Enemy::Update(float deltaTime) {
-    PlayScene* scene = getPlayScene();
-    if (!scene) return;
-    
-    Engine::Point playerPos = scene->GetPlayerPosition();  
-    Engine::Point vec = playerPos - Position;
-    float distance = vec.Magnitude();
-
-    if (distance > 0) {
-        Engine::Point normalized = vec / distance;
-        Velocity = normalized * speed;
-    } else {
-        Velocity = Engine::Point(0, 0);
-    }
-
-    Position = Position + Velocity * deltaTime;
-    Rotation = atan2(Velocity.y, Velocity.x);
-    Sprite::Update(deltaTime);
-}
-*/
 void Enemy::Draw() const {
     Sprite::Draw();
     if (PlayScene::DebugMode) {

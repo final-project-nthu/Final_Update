@@ -3,6 +3,23 @@
 #include "Scene/PlayScene.hpp"
 #include "Engine/Point.hpp"
 #include "Engine/GameEngine.hpp"
+#include "Bullet/Bullet.hpp"
+#include "Enemy.hpp"
+#include "Engine/AudioHelper.hpp"
+#include "Engine/GameEngine.hpp"
+#include "Engine/Group.hpp"
+#include "Engine/IScene.hpp"
+#include "Engine/LOG.hpp"
+#include "Scene/PlayScene.hpp"
+#include "Turret/Turret.hpp"
+#include "UI/Animation/DirtyEffect.hpp"
+#include "UI/Animation/ExplosionEffect.hpp"
+#include "Engine/Collider.hpp"
+#include "Engine/GameEngine.hpp"
+#include "Engine/IObject.hpp"
+#include "Engine/Point.hpp"
+#include "Engine/Sprite.hpp"
+#include "Player/Player.hpp"
 RobotEnemy::RobotEnemy(int x, int y) : Enemy("play/robot.png", x, y, 10, 50, 30, 50),berserk(false){
 }
 
