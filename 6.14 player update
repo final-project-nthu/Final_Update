@@ -164,3 +164,4 @@ void PlayScene::EnchantmentClicked() {
 
 
 // 如果有畫圖顯示錯誤的有關allegro 要#include <allegro5/allegro_primitives.h>
+// 道具圖片已附上
