@@ -8,7 +8,6 @@ class PlayScene;
 
 class Player : public Engine::Sprite {
 protected:
-    float speed;
     PlayScene* getPlayScene();
     float baseY;  // 角色原始Y座標（不包含震動offset）
     float timeSinceStart = 0.0f; // 用來累積時間做震動用
@@ -17,6 +16,7 @@ protected:
     float CollisionRadius;
 
 public:
+    float speed;
     bool Enabled = true;
     Player(std::string img, float x, float y, float speed);
     void Update(float deltaTime) override;
