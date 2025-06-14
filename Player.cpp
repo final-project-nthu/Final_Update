@@ -84,12 +84,63 @@ void Player::Update(float deltaTime) {
     al_get_mouse_state(&mouseState);
     bool currLeftButtonDown = (mouseState.buttons & 1) != 0;
 
+    // if (currLeftButtonDown && !prevLeftButtonDown) {
+    //     Engine::Point mousePos(mouseState.x, mouseState.y);
+    //     Engine::Point direction = (mousePos - Position).Normalize();
+    //     float bulletSpeed = 600;
+    //     scene->BulletGroup->AddNewObject(new FreezeBullet(Position, direction, bulletSpeed, 0));
+
+    //     if (scene->enchantmentActive) {
+    //         float chance = 0.3f; // 30% 機率雙發
+    //         if (((float)rand() / RAND_MAX) < chance) {
+    //             // 旋轉方向偏移約 10 度 (0.1745 弧度)
+    //             float offsetAngle = 0.1745f;
+
+    //             // 方向向量旋轉函式
+    //             auto rotateVector = [](const Engine::Point& vec, float angle) -> Engine::Point {
+    //                 return Engine::Point(
+    //                     vec.x * cos(angle) - vec.y * sin(angle),
+    //                     vec.x * sin(angle) + vec.y * cos(angle)
+    //                 );
+    //             };
+
+    //             Engine::Point offsetDir = rotateVector(direction, offsetAngle);
+
+    //             // 發射第二顆子彈
+    //             scene->BulletGroup->AddNewObject(new FreezeBullet(Position, offsetDir, bulletSpeed, 0));
+    //         }
+    //     }
+    // }
+
     if (currLeftButtonDown && !prevLeftButtonDown) {
-        Engine::Point mousePos(mouseState.x, mouseState.y);
-        Engine::Point direction = (mousePos - Position).Normalize();
-        float bulletSpeed = 600;
-        scene->BulletGroup->AddNewObject(new FreezeBullet(Position, direction, bulletSpeed, 0));
+    Engine::Point mousePos(mouseState.x, mouseState.y);
+    Engine::Point direction = (mousePos - Position).Normalize();
+    float bulletSpeed = 600;
+    scene->BulletGroup->AddNewObject(new FreezeBullet(Position, direction, bulletSpeed, 0));
+
+    if (scene->enchantmentLevel > 0) {
+        // 以基礎30%機率，每等級機率加倍：0.3 * 2^(enchantmentLevel-1)
+        float baseChance = 0.3f;
+        float chance = baseChance * (1 << (scene->enchantmentLevel - 1));
+        if (chance > 1.0f) chance = 1.0f;  // 機率最大為100%
+
+        if (((float)rand() / RAND_MAX) < chance) {
+            float offsetAngle = 0.1745f; // 約10度
+
+            auto rotateVector = [](const Engine::Point& vec, float angle) -> Engine::Point {
+                return Engine::Point(
+                    vec.x * cos(angle) - vec.y * sin(angle),
+                    vec.x * sin(angle) + vec.y * cos(angle)
+                );
+            };
+
+            Engine::Point offsetDir = rotateVector(direction, offsetAngle);
+            scene->BulletGroup->AddNewObject(new FreezeBullet(Position, offsetDir, bulletSpeed, 0));
+        }
     }
+}
+
+
     prevLeftButtonDown = currLeftButtonDown;
 
     // 碰撞敵人判斷
