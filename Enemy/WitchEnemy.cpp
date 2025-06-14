@@ -4,6 +4,9 @@
 #include "Engine/Point.hpp"
 #include "Engine/GameEngine.hpp"
 #include "Enemy.hpp"
+#include "Engine/AudioHelper.hpp"
+#include "UI/Animation/DirtyEffect.hpp"
+#include "UI/Animation/SummonEffect.hpp"
 #include <cmath>
 
 WitchEnemy::WitchEnemy(float x, float y)
@@ -31,7 +34,7 @@ void WitchEnemy::Update(float deltaTime) {
         summonTimer = 0;
     }
 }
-
+/*
 void WitchEnemy::Summon() {
    // 在左右兩邊產生 PlaneEnemy
     PlayScene* scene = getPlayScene();
@@ -50,6 +53,45 @@ void WitchEnemy::Summon() {
     if (gridX + 1 < PlayScene::MapWidth) {
         auto* e2 = new SkeletonEnemy((gridX + 1) * PlayScene::BlockSize + PlayScene::BlockSize / 2,
                                 gridY * PlayScene::BlockSize + PlayScene::BlockSize / 2);
+        e2->UpdatePath(scene->mapDistance);
+        scene->EnemyGroup->AddNewObject(e2);
+    }
+}
+*/
+
+void WitchEnemy::Summon() {
+    PlayScene* scene = getPlayScene();
+    const float offset = 1;
+    int gridX = static_cast<int>(Position.x / PlayScene::BlockSize);
+    int gridY = static_cast<int>(Position.y / PlayScene::BlockSize);
+
+    // 播放召喚音效
+    AudioHelper::PlaySample("summon.mp3",0,4);
+
+    // 左側召喚
+    if (gridX - 1 >= 0) {
+        float x = (gridX - 1) * PlayScene::BlockSize + PlayScene::BlockSize / 2;
+        float y = gridY * PlayScene::BlockSize + PlayScene::BlockSize / 2;
+
+        // 加入魔法陣 & 煙霧特效
+        scene->EffectGroup->AddNewObject(new SummonEffect("play/magic2.png", 0.6, x, y,0.2f));
+        //scene->EffectGroup->AddNewObject(new DirtyEffect("play/summon-smoke.png", 0.4, x, y));
+
+        // 加入敵人
+        auto* e1 = new SkeletonEnemy(x, y);
+        e1->UpdatePath(scene->mapDistance);
+        scene->EnemyGroup->AddNewObject(e1);
+    }
+
+    // 右側召喚
+    if (gridX + 1 < PlayScene::MapWidth) {
+        float x = (gridX + 1) * PlayScene::BlockSize + PlayScene::BlockSize / 2;
+        float y = gridY * PlayScene::BlockSize + PlayScene::BlockSize / 2;
+
+        scene->EffectGroup->AddNewObject(new SummonEffect("play/magic2.png", 0.6, x, y,0.2f));
+        //scene->EffectGroup->AddNewObject(new DirtyEffect("play/summon-smoke.png", 0.4, x, y));
+
+        auto* e2 = new SkeletonEnemy(x, y);
         e2->UpdatePath(scene->mapDistance);
         scene->EnemyGroup->AddNewObject(e2);
     }

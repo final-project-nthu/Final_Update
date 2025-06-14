@@ -20,30 +20,44 @@
 #include "Engine/Point.hpp"
 #include "Engine/Sprite.hpp"
 #include "Player/Player.hpp"
-RobotEnemy::RobotEnemy(int x, int y) : Enemy("play/robot.png", x, y, 10, 50, 30, 50),berserk(false){
+RobotEnemy::RobotEnemy(int x, int y) : Enemy("play/robot.png", x, y, 10, 10, 30, 50),berserk(false){
 }
 
-// 覆寫 Update，檢查是否進入暴衝
 void RobotEnemy::Update(float deltaTime) {
     if (!berserk && hp <= 15) {
         berserk = true;
-        speed *= 3;
+        speed *= 5;
+
+        // 播放暴衝音效
+        AudioHelper::PlaySample("shockwave.ogg");
+
+        // 加入暴衝啟動時的綠色爆炸效果（可換成更炫的特效圖）
+        getPlayScene()->GroundEffectGroup->AddNewObject(new DirtyEffect("play/explosion-3.png", 0.3 , Position.x, Position.y));
     }
-    Enemy::Update(deltaTime); // 保留原本的移動與行為
+
+    // 每 0.2 秒加一個綠色殘影（簡化示範）
+    if (berserk) {
+        shadowCooldown -= deltaTime;
+        if (shadowCooldown <= 0) {
+            shadowCooldown = 0.2; // 控制殘影間隔
+            getPlayScene()->EffectGroup->AddNewObject(new DirtyEffect("play/explosion-3.png", 0.3 , Position.x, Position.y));
+        }
+    }
+
+    // 保留原邏輯
+    Enemy::Update(deltaTime);
 
     PlayScene* scene = getPlayScene();
     if (!scene) return;
-    
-    Engine::Point playerPos = scene->GetPlayerPosition();  
+
+    Engine::Point playerPos = scene->GetPlayerPosition();
     Engine::Point vec = playerPos - Position;
     float distance = vec.Magnitude();
 
-    if (distance > 0) {
-        Engine::Point normalized = vec / distance;
-        Velocity = normalized * speed;
-    } else {
+    if (distance > 0)
+        Velocity = (vec / distance) * speed;
+    else
         Velocity = Engine::Point(0, 0);
-    }
 
     Position = Position + Velocity * deltaTime;
     Rotation = atan2(Velocity.y, Velocity.x);
@@ -56,10 +70,19 @@ void RobotEnemy::Draw() const {
     float drawX = Position.x - Anchor.x * w * scale;
     float drawY = Position.y - Anchor.y * h * scale;
 
-    al_draw_scaled_bitmap(
-        bmp.get(),         // bitmap 指標
-        0, 0, w, h,         // 原圖範圍
-        drawX, drawY,       // 畫在哪
-        w * scale, h * scale, // 縮放大小
-        1);                // 無翻轉
+    if (berserk) {
+        al_draw_tinted_scaled_bitmap(
+            bmp.get(),
+            al_map_rgb(0, 255, 0), // 綠色暴衝狀態
+            0, 0, w, h,
+            drawX, drawY,
+            w * scale, h * scale,
+            0);
+    } else {
+        al_draw_scaled_bitmap(
+            bmp.get(), 0, 0, w, h,
+            drawX, drawY,
+            w * scale, h * scale,
+            0);
+    }                // 無翻轉
 }
