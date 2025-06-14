@@ -1,2 +1,162 @@
 // player.cpp hpp , wizard.cpp ,hpp直接替換
 // freezebullet.cpp , hpp直接替換
+// bullet.cpp , hpp 直接替換
+
+// playscene.cpp 部分
+// draw改成
+void PlayScene::Draw() const {
+    IScene::Draw(); 
+
+    int mapLeft = 0;
+    int mapTop = 0;
+    int mapWidthPixels = MapWidth * BlockSize;
+    int mapHeightPixels = MapHeight * BlockSize;
+
+    if (player) {
+        static ALLEGRO_BITMAP* lightMask = nullptr;
+        static int lastMapWidth = 0;
+        static int lastMapHeight = 0;
+
+        if (!lightMask || mapWidthPixels != lastMapWidth || mapHeightPixels != lastMapHeight) {
+            if (lightMask) al_destroy_bitmap(lightMask);
+            lightMask = al_create_bitmap(mapWidthPixels, mapHeightPixels);
+            lastMapWidth = mapWidthPixels;
+            lastMapHeight = mapHeightPixels;
+        }
+
+        ALLEGRO_DISPLAY* display = al_get_current_display();
+        ALLEGRO_BITMAP* backbuffer = al_get_backbuffer(display);
+
+        al_set_target_bitmap(lightMask);
+        al_clear_to_color(al_map_rgba(0, 0, 0, 255)); // 完全黑
+
+        int px = static_cast<int>(player->Position.x - mapLeft);
+        int py = static_cast<int>(player->Position.y - mapTop);
+
+        int radiusInner = torchVisionRadiusInner;  // 完全亮
+        int radiusOuter = torchVisionRadiusOuter;  // 完全黑的起點（從亮漸變）
+
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+
+        for (int r = radiusOuter; r >= radiusInner; r--) {
+            float t = (float)(r - radiusInner) / (radiusOuter - radiusInner);
+            int alpha = static_cast<int>(255 * t); // 越外圈越黑
+            al_draw_filled_circle(px, py, r, al_map_rgba(0, 0, 0, alpha));
+        }
+
+        al_draw_filled_circle(px, py, radiusInner, al_map_rgba(0, 0, 0, 0));
+
+        al_set_target_bitmap(backbuffer);
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+        al_draw_tinted_bitmap(lightMask, al_map_rgba(255, 255, 255, 255), mapLeft, mapTop, 0);
+    }
+
+    if (player)
+        player->Draw();
+
+
+    // 藥水效果
+    if (potionEffectActive) {
+        float t = al_get_time(); // 用時間讓圈圈有動態效果
+        float alpha = 0.5 + 0.5 * sin(t * 10); // 閃爍效果（介於 0～1）
+        al_draw_circle(player->Position.x, player->Position.y, 40 + 6 * sin(t * 5),
+            al_map_rgba_f(1, 0.2, 0.8, alpha), 4);
+
+    }
+
+    // UI 可以放這裡，例如右側金幣或波數資訊
+
+    if (DebugMode) {
+        for (int i = 0; i < MapHeight; i++) {
+            for (int j = 0; j < MapWidth; j++) {
+                if (mapDistance[i][j] != -1) {
+                    // Not elegant nor efficient, but it's quite enough for debugging.
+                    Engine::Label label(std::to_string(mapDistance[i][j]), "pirulen.ttf", 32, (j + 0.5) * BlockSize, (i + 0.5) * BlockSize);
+                    label.Anchor = Engine::Point(0.5, 0.5);
+                    label.Draw();
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+//新增三個函式 in playscene.cpp
+void PlayScene::TorchClicked() {
+    if (money >= 100) {
+        money -= 100;
+        torchVisionRadiusInner += 75;
+        torchVisionRadiusOuter += 75;
+        UIMoney->Text = std::string("$") + std::to_string(money);
+    }
+}
+
+void PlayScene::PotionClicked() {
+    if (money >= 50 && !potionEffectActive) {
+        money -= 50;
+        UIMoney->Text = std::string("$") + std::to_string(money);
+
+        // 加強效果
+        player->speed += 120;
+        potionTimer = 5.0f;
+        potionAttackMultiplier = 1.5f; // 子彈傷害增加 50%
+        potionEffectActive = true;
+
+    }
+}
+void PlayScene::EnchantmentClicked() {
+    if (money >= 150) {
+        money -= 150;
+        UIMoney->Text = std::string("$") + std::to_string(money);
+
+        enchantmentLevel++;  // 每次點擊升級等級
+    }
+}
+
+
+
+
+
+// ConstructUI 新增以下的(建議把原本砲台的刪掉或comment)
+    //藥水
+    btn = new TurretButton("play/floor.png", "play/dirt.png",
+                       Engine::Sprite("play/potion.png", 1294-8, 136-8, 0, 0, 0, 0),
+                       Engine::Sprite("play/potion.png", 1294-8, 136-8, 0, 0, 0, 0), 1294, 136, 50); // 這邊價格只是顯示用
+    btn->SetOnClickCallback(std::bind(&PlayScene::PotionClicked, this));
+    UIGroup->AddNewControlObject(btn);
+    UIGroup->AddNewObject(new Engine::Label("$50", "pirulen.ttf", 24, 1294, 136 + 60));
+
+    // 火把
+    btn = new TurretButton("play/floor.png", "play/dirt.png",
+                       Engine::Sprite("play/torch.png", 1370-8, 136-8, 0, 0, 0, 0),
+                       Engine::Sprite("play/torch.png", 1370-8, 136-8, 0, 0, 0, 0), 1370, 136, 100); // 這邊價格只是顯示用
+    btn->SetOnClickCallback(std::bind(&PlayScene::TorchClicked, this));
+    UIGroup->AddNewControlObject(btn);
+    UIGroup->AddNewObject(new Engine::Label("$100", "pirulen.ttf", 24, 1370, 136 + 60));
+
+    // 附魔
+    btn = new TurretButton("play/floor.png", "play/dirt.png",
+                       Engine::Sprite("play/book.png", 1446-4, 136-4, 0, 0, 0, 0),
+                       Engine::Sprite("play/book.png", 1446-4, 136-4, 0, 0, 0, 0), 1446, 136, 150); // 這邊價格只是顯示用
+    btn->SetOnClickCallback(std::bind(&PlayScene::EnchantmentClicked, this));
+    UIGroup->AddNewControlObject(btn);
+    UIGroup->AddNewObject(new Engine::Label("$150", "pirulen.ttf", 24, 1446, 136 + 60));
+
+
+
+// playscene.hpp新增 建議在public
+    int torchVisionRadiusInner = 150; // 初始亮圈
+    int torchVisionRadiusOuter = 250; // 初始暗圈外界線
+    Engine::Image* torchBtnImage = nullptr;
+    void TorchClicked();
+    void PotionClicked();
+    void EnchantmentClicked();
+    float potionTimer = 0;
+    bool potionEffectActive = false;
+    float potionAttackMultiplier = 1.0f;
+    int enchantmentLevel = 0;
