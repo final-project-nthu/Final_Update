@@ -160,3 +160,7 @@ void PlayScene::EnchantmentClicked() {
     bool potionEffectActive = false;
     float potionAttackMultiplier = 1.0f;
     int enchantmentLevel = 0;
+
+
+
+// 如果有畫圖顯示錯誤的有關allegro 要#include <allegro5/allegro_primitives.h>
